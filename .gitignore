@@ -1,0 +1,6 @@
+# The dump and the built database ARE meant to be committed -- that is the
+# entire point of this repo. Do not add data/*.db or data/*.json here.
+
+__pycache__/
+*.pyc
+.DS_Store
