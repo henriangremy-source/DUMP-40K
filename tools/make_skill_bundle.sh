@@ -26,9 +26,21 @@ if [ -z "$DUMP" ] || [ ! -f "$DUMP" ]; then
   exit 1
 fi
 
-SKILL="${WH40K_SKILL_DIR:-$HOME/.claude/skills/wh40k}"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Prefer the copy vendored in this repo, so the script works on any machine --
+# no local Claude Code install required. Fall back to a synced skill, then to
+# an explicit override.
+if [ -n "${WH40K_SKILL_DIR:-}" ]; then
+  SKILL="$WH40K_SKILL_DIR"
+elif [ -f "$REPO/skill/scripts/build_db.py" ]; then
+  SKILL="$REPO/skill"
+else
+  SKILL="$HOME/.claude/skills/wh40k"
+fi
+
 if [ ! -f "$SKILL/scripts/build_db.py" ]; then
-  echo "Error: wh40k skill not found at $SKILL" >&2
+  echo "Error: wh40k skill source not found at $SKILL" >&2
   echo "Set WH40K_SKILL_DIR to its location and retry." >&2
   exit 1
 fi

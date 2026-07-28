@@ -3,6 +3,21 @@
 Carries the Warhammer 40,000 app data export so the `wh40k` skill works in any
 Claude Code session started against this repo — including from a phone.
 
+## Start here
+
+Do this once on a computer, and the phone never has to do anything again:
+
+```bash
+git clone https://github.com/henriangremy-source/DUMP-40K && cd DUMP-40K
+tools/make_skill_bundle.sh /path/to/dump_vXXX.json
+```
+
+Then upload the resulting `build/wh40k.zip` at **claude.ai → Settings →
+Capabilities → Skills**, replacing `wh40k`. The skill now carries its own data
+into every session — phone chats included — with nothing to run or start.
+
+No local Claude Code install is needed; the skill source is vendored in `skill/`.
+
 ## The problem this solves
 
 The `wh40k` skill syncs from claude.ai into every session, but only its code:
@@ -124,9 +139,13 @@ data. Delete it afterwards so the hook doesn't pick it up instead of the real du
 .claude/hooks/session-start.sh   installs the database into the synced skill
 .claude/settings.json            registers the SessionStart hook
 data/                            the dump and/or built database live here
+skill/                           vendored wh40k skill source (SKILL.md, scripts)
 tools/make_skill_bundle.sh       builds an uploadable skill zip with data baked in
 tests/make_fixture.py            synthetic dump for testing the pipeline
 ```
+
+`skill/` is a copy of the skill as it syncs from claude.ai, so the bundle script
+runs on any machine. If you edit the skill on claude.ai, refresh this copy.
 
 ## A note on the data
 
