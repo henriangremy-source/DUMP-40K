@@ -20,6 +20,43 @@ This repo holds the data, and a `SessionStart` hook installs it into the skill's
 `data/` directory before the session starts. Start a session against DUMP-40K and
 rules lookups just work — nothing to upload, nothing to build by hand.
 
+## Two ways to fix it — pick based on where you need the skill
+
+**Skills sync arbitrary bundled files, not just code.** `data/.gitkeep` and
+`references/rules_index.md` both arrive in every session, so nothing strips the
+data directory — the database is simply missing from the uploaded package. That
+means the best fix is at the source.
+
+| | Database bundled in the skill | This repo + `SessionStart` hook |
+|---|---|---|
+| Plain claude.ai chat (phone) | ✅ | ❌ no hook mechanism exists |
+| Claude Code, any repo | ✅ | ❌ only sessions on DUMP-40K |
+| Claude Code on DUMP-40K | ✅ | ✅ |
+| Startup cost | none | 1–2 s, or ~30 s from raw JSON |
+| Re-upload needed per dump version | yes | no, just `git push` |
+
+Bundling covers every case; the hook only covers sessions started against this
+repo. Use bundling as the primary fix and keep the hook as the fallback for
+whenever the skill is out of date relative to a fresh dump.
+
+## Bundling the database into the skill (fixes every session)
+
+From a computer that has the dump:
+
+```bash
+tools/make_skill_bundle.sh /path/to/dump_vXXX.json
+```
+
+This stages the synced skill, builds the database into its `data/` directory, and
+writes `build/wh40k.zip` with `wh40k/` as the single top-level entry (required for
+upload). It copies data in only — it never rewrites the skill's code.
+
+Then: **claude.ai → Settings → Capabilities → Skills → replace `wh40k` with the
+zip.** Start any fresh session and rules lookups work with no further setup.
+
+Check the reported zip size before uploading. A few tens of MB is fine; if it is
+unexpectedly large, fall back to the repo + hook approach below.
+
 ## Setup (one time, from a computer)
 
 The dump has to be added from a machine that has the file — you can't upload
@@ -83,6 +120,7 @@ data. Delete it afterwards so the hook doesn't pick it up instead of the real du
 .claude/hooks/session-start.sh   installs the database into the synced skill
 .claude/settings.json            registers the SessionStart hook
 data/                            the dump and/or built database live here
+tools/make_skill_bundle.sh       builds an uploadable skill zip with data baked in
 tests/make_fixture.py            synthetic dump for testing the pipeline
 ```
 
