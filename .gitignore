@@ -1,6 +1,10 @@
 # The dump and the built database ARE meant to be committed -- that is the
 # entire point of this repo. Do not add data/*.db or data/*.json here.
 
+# Generated locally by tools/make_skill_bundle.sh. Not part of the repo --
+# you build it on your own machine and upload it to claude.ai.
+build/
+
 __pycache__/
 *.pyc
 .DS_Store

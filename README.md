@@ -47,6 +47,10 @@ From a computer that has the dump:
 tools/make_skill_bundle.sh /path/to/dump_vXXX.json
 ```
 
+> **`build/wh40k.zip` is generated on your machine — it is not in this repo and
+> never will be.** Building it requires the dump, which isn't committed here. The
+> repo holds the recipe; you run it to produce the zip.
+
 This stages the synced skill, builds the database into its `data/` directory, and
 writes `build/wh40k.zip` with `wh40k/` as the single top-level entry (required for
 upload). It copies data in only — it never rewrites the skill's code.
