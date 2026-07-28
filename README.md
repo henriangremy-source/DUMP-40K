@@ -9,8 +9,17 @@ Do this once on a computer, and the phone never has to do anything again:
 
 ```bash
 git clone https://github.com/henriangremy-source/DUMP-40K && cd DUMP-40K
-tools/make_skill_bundle.sh /path/to/dump_vXXX.json
+python tools/make_skill_bundle.py /path/to/dump_vXXX.json
 ```
+
+On Windows, in PowerShell:
+
+```powershell
+python tools\make_skill_bundle.py C:\path\to\dump_vXXX.json
+```
+
+(`tools/make_skill_bundle.sh` is the same thing for people who prefer bash, but it
+needs a `zip` binary that Windows doesn't ship — use the Python version there.)
 
 Then upload the resulting `build/wh40k.zip` at **claude.ai → Settings →
 Capabilities → Skills**, replacing `wh40k`. The skill now carries its own data
