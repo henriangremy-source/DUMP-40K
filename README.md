@@ -142,6 +142,23 @@ rm data/dump_v999.json                     # don't commit the fixture
 The fixture contains one made-up unit — it is a plumbing check, not real rules
 data. Delete it afterwards so the hook doesn't pick it up instead of the real dump.
 
+## Event charts
+
+`tools/bcp_disposition_chart.py` draws the Force Disposition split by faction for
+a Best Coast Pairings event — one stacked bar per faction, sorted by headcount:
+
+```bash
+python3 tools/bcp_disposition_chart.py ChZP41nemm16
+```
+
+The event id is the last path segment of the BCP event URL. It writes a PNG and
+a CSV of the same counts into `build/`. Needs `matplotlib`; nothing else in this
+repo does, so install it only if you want the charts.
+
+Players who have not yet picked a faction or a disposition are left out, and the
+script reports how many that was — registration is usually still open right up to
+the event, so the numbers move.
+
 ## Layout
 
 ```
@@ -150,6 +167,7 @@ data. Delete it afterwards so the hook doesn't pick it up instead of the real du
 data/                            the dump and/or built database live here
 skill/                           vendored wh40k skill source (SKILL.md, scripts)
 tools/make_skill_bundle.sh       builds an uploadable skill zip with data baked in
+tools/bcp_disposition_chart.py   disposition-by-faction chart for a BCP event
 tests/make_fixture.py            synthetic dump for testing the pipeline
 ```
 
