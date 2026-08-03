@@ -110,9 +110,9 @@ def tally(players):
     return counts, skipped
 
 
-def marine_row(counts):
+def marine_row(counts, enabled=True):
     """Sum the Space Marine chapters present, or None if there are none."""
-    chapters = [f for f in MARINE_CHAPTERS if f in counts]
+    chapters = [f for f in MARINE_CHAPTERS if f in counts] if enabled else []
     if not chapters:
         return None, []
     combined = collections.Counter()
@@ -121,7 +121,7 @@ def marine_row(counts):
     return combined, chapters
 
 
-def draw(counts, event_name, out_png):
+def draw(counts, event_name, out_png, marines="bottom"):
     import matplotlib
 
     matplotlib.use("Agg")
@@ -129,24 +129,33 @@ def draw(counts, event_name, out_png):
     from matplotlib.patches import Patch
 
     # Biggest faction on top: plot ascending, since y grows upward.
-    factions = sorted(counts, key=lambda f: (sum(counts[f].values()), f))
-    totals = [sum(counts[f].values()) for f in factions]
-    grand_total = sum(totals)
-    faction_max = max(totals)
+    ranking = sorted(counts, key=lambda f: (sum(counts[f].values()), f))
+    grand_total = sum(sum(counts[f].values()) for f in ranking)
+    faction_max = max(sum(counts[f].values()) for f in ranking)
 
-    # The combined row sits below the ranking, on the same scale. It repeats
-    # players already counted above, so it never joins the sort.
-    combined, chapters = marine_row(counts)
+    # The combined row is set apart from the ranking, past a gap and a divider,
+    # because it repeats players already counted there and never joins the sort.
+    combined, chapters = marine_row(counts, marines != "none")
     if combined:
-        factions = [MARINE_ROW] + factions
-        totals = [sum(combined.values())] + totals
         counts = dict(counts, **{MARINE_ROW: combined})
+        last = len(ranking) - 1
+        if marines == "top":
+            factions = ranking + [MARINE_ROW]
+            y = list(range(len(ranking))) + [last + 1.6]
+            divider = last + 0.8
+        else:
+            factions = [MARINE_ROW] + ranking
+            y = [0] + [i + 1.6 for i in range(len(ranking))]
+            divider = 0.8
+    else:
+        factions = ranking
+        y = list(range(len(ranking)))
+
+    totals = [sum(counts[f].values()) for f in factions]
     x_max = max(totals)
 
     rows = len(factions)
     fig, ax = plt.subplots(figsize=(13, 0.42 * rows + 2.4))
-    # y=0 is the combined row; the ranking starts one slot higher, past the gap.
-    y = [0] + [i + 0.6 for i in range(1, rows)] if combined else list(range(rows))
     left = [0] * rows
 
     for disposition in DISPOSITIONS:
@@ -192,19 +201,24 @@ def draw(counts, event_name, out_png):
         )
 
     if combined:
-        ax.axhline(0.8, color="#BBBBBB", linewidth=1, linestyle=(0, (4, 4)), zorder=2)
+        ax.axhline(
+            divider, color="#BBBBBB", linewidth=1, linestyle=(0, (4, 4)), zorder=2
+        )
 
     ax.set_yticks(list(y))
     ax.set_yticklabels(factions, fontsize=10)
     if combined:
-        ax.get_yticklabels()[0].set_fontstyle("italic")
-        ax.get_yticklabels()[0].set_color("#555555")
+        tick = ax.get_yticklabels()[factions.index(MARINE_ROW)]
+        tick.set_fontstyle("italic")
+        tick.set_color("#555555")
     ax.set_xlim(0, x_max * 1.06)
     ax.set_ylim(-0.9, y[-1] + 0.8)
     xlabel = f"Number of players ({grand_total} total)"
     if combined:
+        where = "below" if marines == "top" else "above"
         xlabel += (
-            f"\n{MARINE_ROW} = {' + '.join(chapters)} — already counted in the rows above"
+            f"\n{MARINE_ROW} = {' + '.join(chapters)}"
+            f" — already counted in the rows {where}"
         )
     ax.set_xlabel(xlabel, fontsize=10)
     ax.set_title(
@@ -224,8 +238,8 @@ def draw(counts, event_name, out_png):
             Patch(facecolor=COLORS[d], edgecolor="white", label=d)
             for d in DISPOSITIONS
         ],
-        # Upper right: the combined row fills the bottom of the plot.
-        loc="upper right" if combined else "lower right",
+        # Keep clear of the combined row, which spans the widest.
+        loc="upper right" if marines == "bottom" and combined else "lower right",
         fontsize=10,
         frameon=True,
         edgecolor="#CCCCCC",
@@ -236,7 +250,7 @@ def draw(counts, event_name, out_png):
     plt.close(fig)
 
 
-def write_csv(counts, out_csv):
+def write_csv(counts, out_csv, marines="bottom"):
     factions = sorted(counts, key=lambda f: (-sum(counts[f].values()), f))
     with open(out_csv, "w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
@@ -244,7 +258,7 @@ def write_csv(counts, out_csv):
         for faction in factions:
             row = [counts[faction][d] for d in DISPOSITIONS]
             writer.writerow([faction, *row, sum(row)])
-        combined, _ = marine_row(counts)
+        combined, _ = marine_row(counts, marines != "none")
         if combined:
             row = [combined[d] for d in DISPOSITIONS]
             writer.writerow([MARINE_ROW, *row, sum(row)])
@@ -259,6 +273,14 @@ def main():
         default="build",
         help="where to write the PNG and CSV (default: build/)",
     )
+    parser.add_argument(
+        "--marine-total",
+        dest="marines",
+        choices=("bottom", "top", "none"),
+        default="bottom",
+        help="where to put the combined All Space Marines row, or none to drop it"
+        " (default: bottom)",
+    )
     args = parser.parse_args()
 
     event = fetch_event(args.event_id)
@@ -270,9 +292,12 @@ def main():
 
     outdir = pathlib.Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    stem = outdir / f"{args.event_id}_disposition_by_faction"
-    draw(counts, event_name, stem.with_suffix(".png"))
-    write_csv(counts, stem.with_suffix(".csv"))
+    name = f"{args.event_id}_disposition_by_faction"
+    if args.marines != "bottom":
+        name += f"_marines_{args.marines}"
+    stem = outdir / name
+    draw(counts, event_name, stem.with_suffix(".png"), args.marines)
+    write_csv(counts, stem.with_suffix(".csv"), args.marines)
 
     charted = sum(sum(c.values()) for c in counts.values())
     print(f"{event_name}: {charted} of {len(players)} players charted", end="")

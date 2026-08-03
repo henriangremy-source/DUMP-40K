@@ -159,11 +159,15 @@ Players who have not yet picked a faction or a disposition are left out, and the
 script reports how many that was — registration is usually still open right up to
 the event, so the numbers move.
 
-Below the ranking, separated by a divider, sits a combined **All Space Marines**
-row: Codex Space Marines plus its supplements (Dark Angels, Blood Angels, Space
-Wolves, Black Templars, Deathwatch). It re-counts players already shown above, so
+Set apart from the ranking by a divider sits a combined **All Space Marines** row:
+Codex Space Marines plus its supplements (Dark Angels, Blood Angels, Space Wolves,
+Black Templars, Deathwatch). It re-counts players already shown in the ranking, so
 it never joins the sort. Grey Knights are left out of it — Astartes, but their own
 codex and army rule. Edit `MARINE_CHAPTERS` to draw that line differently.
+
+`--marine-total top|bottom|none` moves that row above the ranking, below it
+(default), or drops it. Anything other than the default gets its own file name, so
+the variants sit side by side instead of overwriting each other.
 
 ## Layout
 
