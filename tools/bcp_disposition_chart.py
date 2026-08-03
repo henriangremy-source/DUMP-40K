@@ -48,6 +48,19 @@ COLORS = {
 # BCP's faction names, tidied for the axis only.
 LABEL_FIXES = {"Space Marines (Astartes)": "Space Marines"}
 
+# Codex Space Marines and its supplements, drawn as one extra summary row under
+# the ranking. Grey Knights are Astartes but have their own codex and army rule,
+# so they stay a faction of their own here.
+MARINE_CHAPTERS = [
+    "Space Marines",
+    "Dark Angels",
+    "Blood Angels",
+    "Space Wolves",
+    "Black Templars",
+    "Deathwatch",
+]
+MARINE_ROW = "All Space Marines"
+
 
 def get(path, params, retries=4):
     url = f"{API}/{path}?" + urllib.parse.urlencode(params)
@@ -97,6 +110,17 @@ def tally(players):
     return counts, skipped
 
 
+def marine_row(counts):
+    """Sum the Space Marine chapters present, or None if there are none."""
+    chapters = [f for f in MARINE_CHAPTERS if f in counts]
+    if not chapters:
+        return None, []
+    combined = collections.Counter()
+    for chapter in chapters:
+        combined.update(counts[chapter])
+    return combined, chapters
+
+
 def draw(counts, event_name, out_png):
     import matplotlib
 
@@ -108,11 +132,22 @@ def draw(counts, event_name, out_png):
     factions = sorted(counts, key=lambda f: (sum(counts[f].values()), f))
     totals = [sum(counts[f].values()) for f in factions]
     grand_total = sum(totals)
+    faction_max = max(totals)
+
+    # The combined row sits below the ranking, on the same scale. It repeats
+    # players already counted above, so it never joins the sort.
+    combined, chapters = marine_row(counts)
+    if combined:
+        factions = [MARINE_ROW] + factions
+        totals = [sum(combined.values())] + totals
+        counts = dict(counts, **{MARINE_ROW: combined})
     x_max = max(totals)
 
-    fig, ax = plt.subplots(figsize=(13, 0.42 * len(factions) + 2.2))
-    y = range(len(factions))
-    left = [0] * len(factions)
+    rows = len(factions)
+    fig, ax = plt.subplots(figsize=(13, 0.42 * rows + 2.4))
+    # y=0 is the combined row; the ranking starts one slot higher, past the gap.
+    y = [0] + [i + 0.6 for i in range(1, rows)] if combined else list(range(rows))
+    left = [0] * rows
 
     for disposition in DISPOSITIONS:
         widths = [counts[f][disposition] for f in factions]
@@ -127,11 +162,13 @@ def draw(counts, event_name, out_png):
             zorder=3,
         )
         for row, (width, start) in enumerate(zip(widths, left)):
-            # Only label a segment wide enough to hold the digits.
-            if width / x_max > 0.03:
+            # Only label a segment wide enough to hold the digits. Measured
+            # against the biggest faction, so adding the combined row -- which
+            # widens the axis -- does not silently drop the small labels.
+            if width / faction_max > 0.03:
                 ax.text(
                     start + width / 2,
-                    row,
+                    y[row],
                     str(width),
                     ha="center",
                     va="center",
@@ -145,7 +182,7 @@ def draw(counts, event_name, out_png):
     for row, total in enumerate(totals):
         ax.text(
             total + x_max * 0.008,
-            row,
+            y[row],
             str(total),
             ha="left",
             va="center",
@@ -154,11 +191,22 @@ def draw(counts, event_name, out_png):
             color="#2A2A2A",
         )
 
+    if combined:
+        ax.axhline(0.8, color="#BBBBBB", linewidth=1, linestyle=(0, (4, 4)), zorder=2)
+
     ax.set_yticks(list(y))
     ax.set_yticklabels(factions, fontsize=10)
+    if combined:
+        ax.get_yticklabels()[0].set_fontstyle("italic")
+        ax.get_yticklabels()[0].set_color("#555555")
     ax.set_xlim(0, x_max * 1.06)
-    ax.set_ylim(-0.9, len(factions) - 0.1)
-    ax.set_xlabel(f"Number of players ({grand_total} total)", fontsize=10)
+    ax.set_ylim(-0.9, y[-1] + 0.8)
+    xlabel = f"Number of players ({grand_total} total)"
+    if combined:
+        xlabel += (
+            f"\n{MARINE_ROW} = {' + '.join(chapters)} — already counted in the rows above"
+        )
+    ax.set_xlabel(xlabel, fontsize=10)
     ax.set_title(
         f"{event_name} — Disposition split by faction",
         fontsize=14,
@@ -176,7 +224,8 @@ def draw(counts, event_name, out_png):
             Patch(facecolor=COLORS[d], edgecolor="white", label=d)
             for d in DISPOSITIONS
         ],
-        loc="lower right",
+        # Upper right: the combined row fills the bottom of the plot.
+        loc="upper right" if combined else "lower right",
         fontsize=10,
         frameon=True,
         edgecolor="#CCCCCC",
@@ -195,6 +244,10 @@ def write_csv(counts, out_csv):
         for faction in factions:
             row = [counts[faction][d] for d in DISPOSITIONS]
             writer.writerow([faction, *row, sum(row)])
+        combined, _ = marine_row(counts)
+        if combined:
+            row = [combined[d] for d in DISPOSITIONS]
+            writer.writerow([MARINE_ROW, *row, sum(row)])
 
 
 def main():
