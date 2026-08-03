@@ -45,8 +45,13 @@ COLORS = {
     "Priority Assets": "#D68910",
 }
 
-# BCP's faction names, tidied for the axis only.
-LABEL_FIXES = {"Space Marines (Astartes)": "Space Marines"}
+# BCP's faction names, rewritten before counting. A rename that collides with an
+# existing faction merges the two rows -- which is what we want for BCP's
+# "Forces of the Hive Mind" entry, a handful of players who belong with the cult.
+LABEL_FIXES = {
+    "Space Marines (Astartes)": "Space Marines",
+    "Forces of the Hive Mind": "Genestealer Cult",
+}
 
 # Codex Space Marines and its supplements, drawn as one extra summary row under
 # the ranking. Grey Knights are Astartes but have their own codex and army rule,
